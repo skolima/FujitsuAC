@@ -36,7 +36,7 @@ Tested aircons list: https://github.com/Benas09/FujitsuAC/discussions/24
 <p>
   Or you can purchase <strong>ready-to-use</strong> dongle.<br/>
 
-  <a href="https://buy.stripe.com/6oU28r6Nz3GT8kbbi61sQ06">
+  <a href="https://www.faircon.lt">
     <img src="https://img.shields.io/badge/Purchase%20the%20dongle-Stripe-635BFF?style=for-the-badge&logo=stripe&logoColor=white">
   </a>
   
