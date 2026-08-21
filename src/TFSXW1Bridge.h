@@ -46,6 +46,9 @@ namespace FujitsuAC {
             void registerClimateEntity();
             void registerSwitch(TFSXW1Controller::Address address);
             void publishState(uint16_t address, const char* value);
+            void publishActionState();
+
+            String lastAction = "";
 
             static const char* addressToString(uint16_t address);
             const char* valueToString(const RegistryTable::Register *reg);

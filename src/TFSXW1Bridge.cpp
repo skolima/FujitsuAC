@@ -116,6 +116,7 @@ namespace FujitsuAC {
 
         p += "\"mode_command_topic\": \"fujitsu/" + _config.getUniqueId() + "/set/mode\",";
         p += "\"mode_state_topic\": \"fujitsu/" + _config.getUniqueId() + "/state/mode\",";
+        p += "\"action_topic\": \"fujitsu/" + _config.getUniqueId() + "/state/action\",";
 
         p += "\"temperature_command_topic\": \"fujitsu/" + _config.getUniqueId() + "/set/temp\",";
         p += "\"temperature_state_topic\": \"fujitsu/" + _config.getUniqueId() + "/state/temp\",";
@@ -429,6 +430,15 @@ namespace FujitsuAC {
         }
 
         this->publishState(reg->address, this->valueToString(reg));
+
+        if (
+            TFSXW1Controller::Address::Power == reg->address
+            || TFSXW1Controller::Address::Mode == reg->address
+            || TFSXW1Controller::Address::SetpointTemp == reg->address
+            || TFSXW1Controller::Address::ActualTemp == reg->address
+        ) {
+            this->publishActionState();
+        }
 
         if (TFSXW1Controller::Address::Power == reg->address) {
             // Always clear pending auto power-on when any real power state arrives.
@@ -835,5 +845,71 @@ namespace FujitsuAC {
         }
 
         return def;
+    }
+
+    void TFSXW1Bridge::publishActionState() {
+        RegistryTable::Register* powerReg = _controller->getRegister(TFSXW1Controller::Address::Power);
+        RegistryTable::Register* modeReg = _controller->getRegister(TFSXW1Controller::Address::Mode);
+        RegistryTable::Register* setpointReg = _controller->getRegister(TFSXW1Controller::Address::SetpointTemp);
+        RegistryTable::Register* actualReg = _controller->getRegister(TFSXW1Controller::Address::ActualTemp);
+
+        if (nullptr == powerReg || nullptr == modeReg) {
+            return;
+        }
+
+        const char* nextAction = "idle";
+
+        bool isOff = !this->isPoweringOn && !_controller->isPoweredOn();
+        if (isOff) {
+            nextAction = "off";
+        } else {
+            TFSXW1Enums::Mode mode = static_cast<TFSXW1Enums::Mode>(modeReg->value);
+            if (mode == TFSXW1Enums::Mode::Fan) {
+                nextAction = "fan";
+            } else if (mode == TFSXW1Enums::Mode::Dry) {
+                nextAction = "drying";
+            } else if (nullptr == setpointReg || nullptr == actualReg || setpointReg->value == 0xFFFF || actualReg->value == 0xFFFF) {
+                if (mode == TFSXW1Enums::Mode::Cool) {
+                    nextAction = "cooling";
+                } else if (mode == TFSXW1Enums::Mode::Heat) {
+                    nextAction = "heating";
+                } else {
+                    nextAction = "idle";
+                }
+            } else {
+                float target_temp = setpointReg->value / 10.0f;
+                float current_temp = (static_cast<int>(actualReg->value) - 5025) / 100.0f;
+                constexpr float TEMPERATURE_TOLERANCE = 0.5f;
+
+                if (mode == TFSXW1Enums::Mode::Cool) {
+                    if (current_temp + TEMPERATURE_TOLERANCE >= target_temp) {
+                        nextAction = "cooling";
+                    } else {
+                        nextAction = "idle";
+                    }
+                } else if (mode == TFSXW1Enums::Mode::Heat) {
+                    if (current_temp - TEMPERATURE_TOLERANCE <= target_temp) {
+                        nextAction = "heating";
+                    } else {
+                        nextAction = "idle";
+                    }
+                } else if (mode == TFSXW1Enums::Mode::Auto) {
+                    if (current_temp >= target_temp + TEMPERATURE_TOLERANCE) {
+                        nextAction = "cooling";
+                    } else if (current_temp <= target_temp - TEMPERATURE_TOLERANCE) {
+                        nextAction = "heating";
+                    } else {
+                        nextAction = "idle";
+                    }
+                } else {
+                    nextAction = "idle";
+                }
+            }
+        }
+
+        if (this->lastAction != nextAction) {
+            this->lastAction = nextAction;
+            IMqttBridge::publishState("action", nextAction);
+        }
     }
 }
