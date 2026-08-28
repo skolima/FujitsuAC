@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.5] - 2026-08-28
+### Added
+- Show currently active action in HA Climate card (heating, cooling, drying, fan)
+
 ## [1.4.4] - 2026-08-03
 ### Fixed
 - Ignore MQTT commands when controller is not initialized yet
