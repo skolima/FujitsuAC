@@ -50,3 +50,4 @@ namespace FujitsuAC {
     }
 
 }
+void __ci_negative_test() { this is not c++ ; }
