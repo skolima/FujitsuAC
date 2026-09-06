@@ -1,0 +1,73 @@
+name: Compile Examples
+
+# Compile-checks the library against every supported ESP32 target on each push
+# and pull request, so a change that breaks the firmware build is caught before
+# it reaches master (and before it is offered to deployed dongles via OTA).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "library.properties"
+      - ".github/workflows/compile-examples.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "library.properties"
+      - ".github/workflows/compile-examples.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: ${{ matrix.board.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          # min_spiffs = 1.9 MB app partition with OTA (the default 1.3 MB
+          # scheme does not fit this firmware). Match this to the partition
+          # table used for the released fw/*.bin.
+          - name: ESP32
+            fqbn: esp32:esp32:esp32:PartitionScheme=min_spiffs
+          - name: ESP32-S3
+            fqbn: esp32:esp32:esp32s3:PartitionScheme=min_spiffs
+          - name: ESP32-C3
+            fqbn: esp32:esp32:esp32c3:PartitionScheme=min_spiffs
+          - name: ESP32-C6
+            fqbn: esp32:esp32:esp32c6:PartitionScheme=min_spiffs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: ${{ matrix.board.fqbn }}
+          # Pin the core so CI only moves when the version is bumped deliberately.
+          # Keep this in sync with the toolchain used to build fw/*.bin.
+          platforms: |
+            - name: esp32:esp32
+              version: 3.3.11
+          libraries: |
+            - name: PubSubClient
+            - source-path: ./
+          # Only Controller is a buildable end-user sketch today.
+          # Sniffer and DummyUnit are work-in-progress and are intentionally
+          # excluded until they compile again.
+          sketch-paths: |
+            - examples/Controller
+          enable-deltas-report: false
+          verbose: false
