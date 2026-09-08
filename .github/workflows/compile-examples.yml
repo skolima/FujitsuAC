@@ -1,0 +1,77 @@
+name: Compile Examples
+
+# Compile-checks the library against every supported ESP32 target on each push
+# and pull request, so a change that breaks the firmware build is caught before
+# it reaches master (and before it is offered to deployed dongles via OTA).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "library.properties"
+      - ".github/workflows/compile-examples.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "examples/**"
+      - "library.properties"
+      - ".github/workflows/compile-examples.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: ${{ matrix.board.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          # Bare FQBN = the board's default partition table
+          # ("Default 4MB with spiffs", 1.2 MB APP / 1.5 MB SPIFFS). That is the
+          # scheme the released fw/*.bin are built with and what the deployed
+          # fleet runs; the partition table is not OTA-updatable, so CI must
+          # match it. A change that overflows the 1.2 MB app partition on any
+          # target should fail here.
+          - name: ESP32
+            fqbn: esp32:esp32:esp32
+          - name: ESP32-S3
+            fqbn: esp32:esp32:esp32s3
+          - name: ESP32-C3
+            fqbn: esp32:esp32:esp32c3
+          - name: ESP32-C6
+            fqbn: esp32:esp32:esp32c6
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: ${{ matrix.board.fqbn }}
+          # Pinned to the toolchain used to build the released fw/*.bin.
+          # Bump deliberately, in sync with the release build setup.
+          platforms: |
+            - name: esp32:esp32
+              version: "3.3.5"
+          libraries: |
+            - name: PubSubClient
+              version: "2.8"
+            - source-path: ./
+          # Only Controller is a buildable end-user sketch today.
+          # Sniffer and DummyUnit are work-in-progress and are intentionally
+          # excluded until they compile again.
+          sketch-paths: |
+            - examples/Controller
+          enable-deltas-report: false
+          verbose: false
