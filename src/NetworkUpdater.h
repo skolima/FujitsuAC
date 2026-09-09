@@ -93,6 +93,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----
 				)string_literal";
 
+			void closeClient();
 			void setClock();
 			void requestVersion();
 			void debug(const char* name, const char* message);

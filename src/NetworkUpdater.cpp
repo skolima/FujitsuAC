@@ -68,12 +68,15 @@ namespace FujitsuAC {
 
 			_lastVersionCheckInitiatedAtMillis = millis();
 
+			// Guard against re-entry with a live client (e.g. the 24h timer
+			// firing while a check is still in HTTPS_DOWNLOADING).
+			this->closeClient();
+
 			_client = new WiFiClientSecure();
 			_client->setCACert(rootCACertificate);
 
 			if (!_client->connect("raw.githubusercontent.com", 443)) {
-				_client->stop();
-			    _client = nullptr;
+				this->closeClient();
 				
 				this->debug("info", "NetworkUpdater: Check last version ERR1");
 
@@ -92,8 +95,7 @@ namespace FujitsuAC {
 				this->debug("info", "NetworkUpdater: Check last version connected");
 				_versionCheckerState = VersionCheckerState::HTTPS_DOWNLOADING;
 			} else {
-				_client->stop();
-			    _client = nullptr;
+				this->closeClient();
 
 			    this->debug("info", "NetworkUpdater: Check last version ERR2");
 				_versionCheckerState = VersionCheckerState::ERROR;
@@ -108,8 +110,7 @@ namespace FujitsuAC {
 					String line = _client->readStringUntil('\n');
 
 					if (line.startsWith("version=")) {
-					    _client->stop();
-					    _client = nullptr;
+					    this->closeClient();
 
 					    _versionCheckerState = VersionCheckerState::VERSION_CHECKED;
 					    this->onVersionReceivedCallback(line.substring(8).c_str());
@@ -119,14 +120,23 @@ namespace FujitsuAC {
 				return;
 			}
 
-			_client->stop();
-		    _client = nullptr;
+			this->closeClient();
 
 		    this->debug("info", "NetworkUpdater: Check last version ERR3");
 			_versionCheckerState = VersionCheckerState::ERROR;
 
 			return;
 		}
+	}
+
+	void NetworkUpdater::closeClient() {
+		if (nullptr == _client) {
+			return;
+		}
+
+		_client->stop();
+		delete _client;
+		_client = nullptr;
 	}
 
 	void NetworkUpdater::updateFirmware(const char *branch) {
