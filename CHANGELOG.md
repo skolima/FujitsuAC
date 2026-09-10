@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.6] - 2026-09-10
+### Added
+- Fixed slow memory leak in NetworkUpdater
+
 ## [1.4.5] - 2026-08-28
 ### Added
 - Show currently active action in HA Climate card (heating, cooling, drying, fan)
