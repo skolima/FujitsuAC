@@ -21,8 +21,27 @@ namespace FujitsuAC {
             }
 
             this->lastMillis = now;
+
+            // currentIndex is only reset on a >= 20 ms inter-byte gap, so a noisy
+            // bus keeps appending within one "frame". buffer[4] is the length
+            // byte and is peer-supplied: up to 255, i.e. a claimed frame of
+            // buffer[4] + 7 = 262 bytes against uint8_t buffer[128]. Without this
+            // guard the write below walks off the end of the buffer.
+            if (this->currentIndex >= (int) sizeof(this->buffer)) {
+                this->currentIndex = 0;
+                continue;
+            }
+
             this->buffer[this->currentIndex] = b;
             this->currentIndex++;
+
+            // Drop a frame that cannot fit as soon as its length byte is known,
+            // so a bad length byte resynchronises here instead of consuming the
+            // next sizeof(buffer) bytes off the bus first.
+            if (this->currentIndex == 5 && (int) this->buffer[4] + 7 > (int) sizeof(this->buffer)) {
+                this->currentIndex = 0;
+                continue;
+            }
 
             if (this->currentIndex > 4 && this->currentIndex == (int) this->buffer[4] + 7) {
                 if (callback) {

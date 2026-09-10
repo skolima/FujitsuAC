@@ -1,0 +1,47 @@
+name: Host Tests
+
+# Compiles and runs the hardware-independent logic in src/ on the CI host, under
+# AddressSanitizer + UndefinedBehaviorSanitizer. Catches memory-safety and UB
+# regressions in the protocol code (frame assembly, checksums) that a
+# compile-only check cannot - see test/README.md.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "test/**"
+      - ".github/workflows/host-tests.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "test/**"
+      - ".github/workflows/host-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  buffer:
+    name: Buffer frame assembler
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile (g++, ASan + UBSan, warnings as errors)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror \
+              -fsanitize=address,undefined -fno-sanitize-recover=all -g -O1 \
+              -I test/host -I src \
+              test/host/test_buffer.cpp src/Buffer.cpp \
+              -o test_buffer
+
+      - name: Run
+        run: ./test_buffer
