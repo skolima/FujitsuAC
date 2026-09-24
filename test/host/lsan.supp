@@ -1,0 +1,8 @@
+# LeakSanitizer suppressions for the host tests.
+#
+# TFSXW1Controller::initRegistryTable() allocates the RegistryTable with `new`
+# and nothing deletes it. On the device that is by design: the bridge creates
+# one controller at boot and it lives until reset. The tests construct and
+# destroy a controller per case, so LSan reports each table. Suppress exactly
+# that allocation; any other leak still fails the run.
+leak:FujitsuAC::TFSXW1Controller::initRegistryTable

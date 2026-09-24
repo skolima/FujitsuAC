@@ -78,4 +78,6 @@ jobs:
               -o test_tfsxw1_controller
 
       - name: Run
+        env:
+          LSAN_OPTIONS: suppressions=test/host/lsan.supp:print_suppressions=0
         run: ./test_tfsxw1_controller
