@@ -45,3 +45,37 @@ jobs:
 
       - name: Run
         run: ./test_buffer
+
+  tfsxw1-controller:
+    name: TFSXW1 controller handshake
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The controller sources are not warning-clean under -Wall -Wextra yet
+      # (sign-compare, narrowing, unannotated fallthrough), so only the test
+      # itself is built with -Werror; src/ headers are pulled in via -isystem
+      # for the same reason. Sanitizers apply to every translation unit.
+      - name: Compile sources under test (g++, ASan + UBSan)
+        run: |
+          for f in TFSXW1Controller RegistryTable Buffer; do
+              g++ -std=c++17 \
+                  -fsanitize=address,undefined -fno-sanitize-recover=all -g -O1 \
+                  -I test/host -I src \
+                  -c src/$f.cpp -o $f.o
+          done
+
+      - name: Compile test (warnings as errors) and link
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror \
+              -fsanitize=address,undefined -fno-sanitize-recover=all -g -O1 \
+              -I test/host -isystem src \
+              -c test/host/test_tfsxw1_controller.cpp -o test_tfsxw1_controller.o
+          g++ -fsanitize=address,undefined \
+              test_tfsxw1_controller.o TFSXW1Controller.o RegistryTable.o Buffer.o \
+              -o test_tfsxw1_controller
+
+      - name: Run
+        run: ./test_tfsxw1_controller

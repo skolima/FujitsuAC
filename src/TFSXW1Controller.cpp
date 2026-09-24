@@ -275,7 +275,7 @@ namespace FujitsuAC {
 
             uint8_t expectedResponse[8] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xFF, 0xFD};
 
-            if (size != sizeof(expectedResponse) || memcmp(buffer, expectedResponse, sizeof(expectedResponse)) > 0) {
+            if (size != sizeof(expectedResponse) || memcmp(buffer, expectedResponse, sizeof(expectedResponse)) != 0) {
                 this->debug("received", this->toHexStr(buffer, size));
                 this->debug("error", "Unexpected response. Terminate");
                 this->debug("status", "Terminated Init1");
@@ -291,7 +291,7 @@ namespace FujitsuAC {
         if (FrameType::Init2 == this->lastFrameSent) {
             uint8_t expectedResponse[8] = {0x01, 0x00, 0x00, 0x00, 0x01, 0x01, 0xFF, 0xFC};
 
-            if (size != sizeof(expectedResponse) || memcmp(buffer, expectedResponse, sizeof(expectedResponse)) > 0) {
+            if (size != sizeof(expectedResponse) || memcmp(buffer, expectedResponse, sizeof(expectedResponse)) != 0) {
                 this->debug("received", this->toHexStr(buffer, size));
                 this->debug("error", "Unexpected response. Terminate");
                 this->debug("status", "Terminated Init2");

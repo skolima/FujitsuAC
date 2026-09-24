@@ -13,13 +13,17 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 
 // Arduino's millis(). The test binary provides the definition and drives the
 // clock so time-dependent behaviour (the inter-frame gap) is deterministic.
 unsigned long millis();
 
-// Arduino's Stream, pared down to the two methods Buffer uses.
+// Arduino's Stream, pared down to the methods Buffer and the controllers use.
+// write() comes from Arduino's Print; the default discards the bytes.
 class Stream {
     public:
         virtual ~Stream() = default;
@@ -27,4 +31,5 @@ class Stream {
         virtual int available() = 0;
         virtual int read() = 0;
         virtual int peek() { return -1; }
+        virtual size_t write(const uint8_t *, size_t size) { return size; }
 };

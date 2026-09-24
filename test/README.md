@@ -20,6 +20,19 @@ g++ -std=c++17 -Wall -Wextra -Werror \
 ./test_buffer
 ```
 
+The controller suite links more of `src/`. Its sources are not yet clean under
+`-Wall -Wextra`, so only the test file gets `-Werror` (and sees `src/` headers
+through `-isystem`):
+
+```sh
+for f in TFSXW1Controller RegistryTable Buffer; do
+    g++ -std=c++17 -fsanitize=address,undefined -fno-sanitize-recover=all -g -O1         -I test/host -I src -c src/$f.cpp -o $f.o
+done
+g++ -std=c++17 -Wall -Wextra -Werror     -fsanitize=address,undefined -fno-sanitize-recover=all -g -O1     -I test/host -isystem src     -c test/host/test_tfsxw1_controller.cpp -o test_tfsxw1_controller.o
+g++ -fsanitize=address,undefined     test_tfsxw1_controller.o TFSXW1Controller.o RegistryTable.o Buffer.o     -o test_tfsxw1_controller
+./test_tfsxw1_controller
+```
+
 `clang++` works too. Drop `-fsanitize=...` if your toolchain has no sanitizer
 runtime (e.g. stock MinGW) - the assertions still run, but a buffer overrun then
 shows up as a plain crash rather than a diagnosed one.
@@ -28,8 +41,9 @@ shows up as a plain crash rather than a diagnosed one.
 
 | Path | What it is |
 | --- | --- |
-| `host/Arduino.h` | Minimal Arduino-core stub: `Stream`, `millis()`. Extend only as sources under test require. |
+| `host/Arduino.h` | Minimal Arduino-core stub: `Stream` (incl. `write()`), `millis()`, the C headers the core pulls in. Extend only as sources under test require. |
 | `host/test_buffer.cpp` | Tests for `FujitsuAC::Buffer`, plus a ~30-line assert harness and `main()`. |
+| `host/test_tfsxw1_controller.cpp` | Tests for the `TFSXW1Controller` Init1/Init2 handshake, observed through the debug callback. |
 
 Adding a suite: put `test_<unit>.cpp` in `host/`, add whatever core symbols it
 needs to `host/Arduino.h`, and add a compile+run step (or job) to the workflow.
